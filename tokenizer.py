@@ -1,53 +1,66 @@
+from abc import ABC, abstractmethod
+
 special_chars = ("?", ".", "!", ":", ";", ",", " ") # more to come
 
 
-class CharacterTokenizer:
-    
-    def __init__(self, input_text):
-        self.input_text = input_text
-        self.char_map = self._char_mapping(self.input_text)
+class Tokenizer(ABC):
+    """
+        Base tokenizer interface.
 
+        Defines the contract every tokenizer must fulfil. The concrete
+        ``encode``/``decode`` logic lives in the inheriting classes
+        (e.g. ``CharacterTokenizer``), since how text is split into units and
+        mapped to token indices differs per tokenizer.
+    """
+
+    @abstractmethod
+    def encode(self, text: str | None = None) -> list[int]:
+        """Encode text into a list of token indices."""
+
+    @abstractmethod
+    def decode(self, indices: list[int]) -> str:
+        """Decode a list of token indices back into a string."""
+
+
+class CharacterTokenizer(Tokenizer):
+    """Tokenizer whose unit is a single character."""
+
+    def __init__(self, input_text: str):
+        self.input_text = input_text
+        self.char_map = self._char_mapping(input_text)
 
     def _char_mapping(self, text_to_process: str) -> dict[str, int]:
-        """"
-            Process input text_to_process -> sort each unique letter input text consists of.
+        """
+            Process input text_to_process -> sort each unique character the
+            input text consists of and assign an index to it.
             Args:
                 text_to_process: str - input text to process
         """
-        chars = [c for c in text_to_process]
-        char_vocab = list(sorted(set(chars)))
+        char_vocab = sorted(set(text_to_process))
+        return {c: i for i, c in enumerate(char_vocab)}
 
-        char_map: dict[str, int] = {}
-        for i, c in enumerate(char_vocab):
-            char_map[c] = i
-        return char_map
-
-
-    def _encode(self, ch: str): 
+    def _encode(self, ch: str) -> int:
         """
-            transform character to token indice
+            Transform a single character to its token index.
             Args:
-                ch: str - character, which is contained in char_map
-                char_map: dict[str, int] - input text is processed as character map
-                        char_map contains every character input text is consisting of.
-                        Characters are sorted and indexes are assigned.
+                ch: str - character contained in char_map
             Raises:
-                KeyError: if input ch is not present in char_map (which is processed text)
+                KeyError: if ``ch`` is not present in char_map.
         """
         if ch not in self.char_map:
             raise KeyError(f"char '{ch}' is not defined in char_map!")
         return self.char_map[ch]
 
-
-    def _decode(self, tk_indice: int):
-        """
-            transform token indice to character
-        """
+    def _decode(self, tk_indice: int) -> str | None:
+        """Transform a single token index back to its character."""
         return next((k for k, v in self.char_map.items() if v == tk_indice), None)
-    
 
-    def encode(self) -> list[int]:
-        encoded_list = []
-        for c in self.input_text:
-            encoded_list.append(self._encode(c))
-        return encoded_list
+    def encode(self, text: str | None = None) -> list[int]:
+        """Encode ``text`` (or ``input_text`` if omitted) to token indices."""
+        text = self.input_text if text is None else text
+        return [self._encode(ch) for ch in text]
+
+    def decode(self, indices: list[int]) -> str:
+        """Decode a sequence of token indices back into a string."""
+        chars = [self._decode(i) for i in indices]
+        return "".join(c for c in chars if c is not None)
