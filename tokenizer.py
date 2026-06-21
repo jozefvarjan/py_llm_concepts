@@ -21,6 +21,11 @@ class Tokenizer(ABC):
     def decode(self, indices: list[int]) -> str:
         """Decode a list of token indices back into a string."""
 
+    @abstractmethod
+    def token_map(self):
+        """"Process input text to character/index/indice map"""
+
+
 
 class CharacterTokenizer(Tokenizer):
     """Tokenizer whose unit is a single character."""
@@ -64,3 +69,6 @@ class CharacterTokenizer(Tokenizer):
         """Decode a sequence of token indices back into a string."""
         chars = [self._decode(i) for i in indices]
         return "".join(c for c in chars if c is not None)
+    
+    def token_map(self) -> list[tuple[str, tuple[int, int]]]:
+        return [(v, (i, self.char_map[v])) for i, v in enumerate(self.input_text)]
