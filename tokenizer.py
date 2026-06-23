@@ -72,3 +72,20 @@ class CharacterTokenizer(Tokenizer):
     
     def token_map(self) -> list[tuple[str, tuple[int, int]]]:
         return [(v, (i, self.char_map[v])) for i, v in enumerate(self.input_text)]
+    
+
+class WordTokenizer(Tokenizer):
+
+    def __init__(self, input_text):
+        self.input_text = input_text
+        self.vocab_map = {w: i for i, w in enumerate(sorted(set(self.input_text.split(" "))))}
+
+
+    def encode():
+        raise NotImplementedError("WordTokenizer.encode() not implemented yet.")
+
+    def decode():
+        raise NotImplementedError("WordTokenizer.deode() not implemented yet.")
+
+    def token_map(self): 
+        return [(t, (i, self.vocab_map[t])) for i, t in enumerate(self.input_text.split(" "))]
