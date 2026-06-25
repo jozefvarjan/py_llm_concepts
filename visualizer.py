@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, Field
-from tokenizer import Tokenizer, CharacterTokenizer
+from tokenizer import Tokenizer, TokenStats, Stat
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 from matplotlib.ticker import MaxNLocator
 
 
@@ -120,3 +121,108 @@ class TokenScatterVisualizer(DataVisualizer):
         ax_r.set_ylabel('character')
 
         return ax_l
+
+
+class TokenBarVisualizer(DataVisualizer):
+    """
+        Grouped bar chart of token statistics pulled from ``TokenStats``.
+
+        All ``Tokenizer`` instances share one set of axes. The x axis holds the
+        three category groups — characters, words, tokens — and within each
+        group every tokenizer contributes a total/unique bar pair. Each
+        tokenizer keeps its own base colour; the total bar uses the base hue
+        and the unique bar a lighter hue of the same colour, so a tokenizer is
+        recognisable across all categories.
+    """
+
+    # (category label, total stat, unique stat) for each bar pair
+    CATEGORIES = (
+        ('characters', Stat.CH_CNT, Stat.CH_UNIQ),
+        ('words', Stat.W_CNT, Stat.W_UNIQ),
+        ('tokens', Stat.T_CNT, Stat.T_UNIQ),
+    )
+
+    BAR_WIDTH = 0.2  # half of the previous 0.4 — thinner bars
+
+    def __init__(
+        self,
+        settings: PlotSettings,
+        tokenizers: Tokenizer | list[Tokenizer] | dict[str, Tokenizer],
+    ):
+        if isinstance(tokenizers, Tokenizer):
+            tokenizers = [tokenizers]
+        # normalise to a list of (instance_name, tokenizer); a plain list has
+        # no names so the legend falls back to just the class name
+        if isinstance(tokenizers, dict):
+            named = list(tokenizers.items())
+        else:
+            named = [(None, tokenizer) for tokenizer in tokenizers]
+        if not named:
+            raise ValueError("TokenBarVisualizer needs at least one tokenizer.")
+        # keep the first as the inherited single data_aquirer for compatibility
+        super().__init__(settings, named[0][1])
+        self.named_tokenizers = named
+        self.tokenizers = [tokenizer for _, tokenizer in named]
+
+    @staticmethod
+    def _lighten(color, amount: float = 0.55):
+        """Blend ``color`` toward white to produce a lighter hue of it."""
+        r, g, b = mcolors.to_rgb(color)
+        return (r + (1 - r) * amount, g + (1 - g) * amount, b + (1 - b) * amount)
+
+    def plot(self):
+        plt.style.use(self.settings.plt_style)
+
+        n = len(self.tokenizers)
+        n_categories = len(self.CATEGORIES)
+        width = self.BAR_WIDTH
+        bars_per_group = 2 * n              # total + unique for each tokenizer
+        group_span = bars_per_group * width
+        # space category centres so neighbouring groups do not overlap
+        category_step = group_span + 0.5
+        centers = [c * category_step for c in range(n_categories)]
+
+        base_width, base_height = self.settings.figsize
+        # single, landscape-oriented figure that widens with the bar count
+        fig_width = max(base_width, n_categories * category_step + 2)
+        fig, ax = plt.subplots(figsize=(fig_width, base_height))
+
+        palette = plt.get_cmap('tab10')
+        labels = [label for label, _, _ in self.CATEGORIES]
+
+        for idx, (inst_name, tokenizer) in enumerate(self.named_tokenizers):
+            stats = TokenStats.get_stats(tokenizer)
+            totals = [stats.get(total, 0) for _, total, _ in self.CATEGORIES]
+            uniques = [stats.get(unique, 0) for _, _, unique in self.CATEGORIES]
+
+            base = palette(idx % 10)
+            cls = type(tokenizer).__name__
+            # e.g. "CharacterTokenizer (char_tokenizer)" when a name is given
+            name = f'{cls} ({inst_name})' if inst_name else cls
+
+            # slot positions inside each group: total then unique per tokenizer
+            total_slot = 2 * idx
+            unique_slot = 2 * idx + 1
+            total_offset = (total_slot - (bars_per_group - 1) / 2) * width
+            unique_offset = (unique_slot - (bars_per_group - 1) / 2) * width
+
+            total_x = [c + total_offset for c in centers]
+            unique_x = [c + unique_offset for c in centers]
+
+            ax.bar(total_x, totals, width, color=base, edgecolor='k',
+                   label=f'{name}: total')
+            ax.bar(unique_x, uniques, width, color=self._lighten(base),
+                   edgecolor='k', label=f'{name}: unique')
+
+        ax.set_ylabel('count')
+        ax.set_xticks(centers)
+        ax.set_xticklabels(labels)
+        # counts are integers, keep the y axis free of .0 floats
+        ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+        ax.yaxis.grid(True)
+        ax.xaxis.grid(False)
+        # legend to the right of the plot area, stacked vertically
+        ax.legend(ncol=1, loc='center left', bbox_to_anchor=(1.02, 0.5))
+
+        fig.tight_layout()
+        return ax

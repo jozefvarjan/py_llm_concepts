@@ -114,15 +114,37 @@ class Stat(Enum):
     CH_UNIQ = auto()
     W_CNT = auto()
     W_UNIQ = auto()
+    T_CNT = auto()
+    T_UNIQ = auto()
 
 
 class TokenStats:
 
     @staticmethod
     def get_stats(data_acquiring: Tokenizer) -> dict[Stat, int]:
+        words = data_acquiring.input_text.split(" ")
+        tokens = TokenStats._tokens(data_acquiring)
         return {
-            Stat.CH_CNT: len([ch for ch in data_acquiring.input_text]),
+            Stat.CH_CNT: len(data_acquiring.input_text),
             Stat.CH_UNIQ: len(set(data_acquiring.input_text)),
-            Stat.W_UNIQ: len(set(data_acquiring.input_text.split(" "))),
-            Stat.W_CNT: len(data_acquiring.input_text.split(" "))
+            Stat.W_CNT: len(words),
+            Stat.W_UNIQ: len(set(words)),
+            Stat.T_CNT: len(tokens),
+            Stat.T_UNIQ: len(set(tokens)),
         }
+
+    @staticmethod
+    def _tokens(data_acquiring: Tokenizer) -> list:
+        """
+            Best-effort token list for a tokenizer: prefer a precomputed
+            ``tokens`` attribute, otherwise fall back to ``encode()``. Returns
+            an empty list when neither yields tokens (e.g. ``encode`` not
+            implemented), so token stats degrade to 0 rather than raising.
+        """
+        tokens = getattr(data_acquiring, "tokens", None)
+        if tokens is None:
+            try:
+                tokens = data_acquiring.encode()
+            except (NotImplementedError, TypeError):
+                tokens = []
+        return list(tokens)
