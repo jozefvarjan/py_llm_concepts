@@ -1,4 +1,7 @@
 from abc import ABC, abstractmethod
+from enum import Enum, auto
+from transformers import AutoTokenizer
+
 
 special_chars = ("?", ".", "!", ":", ";", ",", " ") # more to come
 
@@ -32,7 +35,7 @@ class CharacterTokenizer(Tokenizer):
 
     def __init__(self, input_text: str):
         self.input_text = input_text
-        self.char_map = self._char_mapping(input_text)
+        self.vocab_map = self._char_mapping(input_text)
 
     def _char_mapping(self, text_to_process: str) -> dict[str, int]:
         """
@@ -52,13 +55,13 @@ class CharacterTokenizer(Tokenizer):
             Raises:
                 KeyError: if ``ch`` is not present in char_map.
         """
-        if ch not in self.char_map:
+        if ch not in self.vocab_map:
             raise KeyError(f"char '{ch}' is not defined in char_map!")
-        return self.char_map[ch]
+        return self.vocab_map[ch]
 
     def _decode(self, tk_indice: int) -> str | None:
         """Transform a single token index back to its character."""
-        return next((k for k, v in self.char_map.items() if v == tk_indice), None)
+        return next((k for k, v in self.vocab_map.items() if v == tk_indice), None)
 
     def encode(self, text: str | None = None) -> list[int]:
         """Encode ``text`` (or ``input_text`` if omitted) to token indices."""
@@ -71,7 +74,7 @@ class CharacterTokenizer(Tokenizer):
         return "".join(c for c in chars if c is not None)
     
     def token_map(self) -> list[tuple[str, tuple[int, int]]]:
-        return [(v, (i, self.char_map[v])) for i, v in enumerate(self.input_text)]
+        return [(v, (i, self.vocab_map[v])) for i, v in enumerate(self.input_text)]
     
 
 class WordTokenizer(Tokenizer):
@@ -80,12 +83,46 @@ class WordTokenizer(Tokenizer):
         self.input_text = input_text
         self.vocab_map = {w: i for i, w in enumerate(sorted(set(self.input_text.split(" "))))}
 
-
     def encode():
         raise NotImplementedError("WordTokenizer.encode() not implemented yet.")
 
     def decode():
-        raise NotImplementedError("WordTokenizer.deode() not implemented yet.")
+        raise NotImplementedError("WordTokenizer.decode() not implemented yet.")
 
     def token_map(self): 
         return [(t, (i, self.vocab_map[t])) for i, t in enumerate(self.input_text.split(" "))]
+    
+
+class PretrainedTokenizer(Tokenizer):
+
+    def __init__(self, input_text, pretrained_model: str = 'gpt2'):
+        self.input_text = input_text
+        self.tokenizer = AutoTokenizer.from_pretrained(pretrained_model)
+        self.tokens = self.tokenizer.encode(self.input_text)
+
+    def encode(self): raise NotImplementedError()
+
+    def decode(self):
+        return {self.tokenizer.decode([tok]): tok for tok in self.tokens}
+
+    def token_map(self):
+        return [(t, (self.tokenizer.encode(t), i)) for i, t in enumerate(self.input_text.split(" "))]
+
+
+class Stat(Enum):
+    CH_CNT = auto()
+    CH_UNIQ = auto()
+    W_CNT = auto()
+    W_UNIQ = auto()
+
+
+class TokenStats:
+
+    @staticmethod
+    def get_stats(data_acquiring: Tokenizer) -> dict[Stat, int]:
+        return {
+            Stat.CH_CNT: len([ch for ch in data_acquiring.input_text]),
+            Stat.CH_UNIQ: len(set(data_acquiring.input_text)),
+            Stat.W_UNIQ: len(set(data_acquiring.input_text.split(" "))),
+            Stat.W_CNT: len(data_acquiring.input_text.split(" "))
+        }
