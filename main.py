@@ -12,28 +12,18 @@ def main():
     # -----  
     char_tokenizer = CharacterTokenizer(txt)
     char_tokenizer2 = CharacterTokenizer(txt2)
-    # visualizer = TokenScatterVisualizer(PlotSettings(), char_tokenizer)
+    visualizer = TokenScatterVisualizer(PlotSettings(), char_tokenizer)
     # visualizer.show()
     # -----
     word_tokenizer = WordTokenizer(txt)
     word_tokenizer2 = WordTokenizer(txt2)
-    # word_visualizer = TokenScatterVisualizer(PlotSettings(), word_tokenizer)
+    word_visualizer = TokenScatterVisualizer(PlotSettings(), word_tokenizer)
     # word_visualizer.show()
     # -----
     
     auto_tokenizer = PretrainedTokenizer(txt)
     auto_tokenizer2 = PretrainedTokenizer(txt2)
-    # print(auto_tokenizer.decode())
-    # print(auto_tokenizer.token_map())
 
-    # word_stats = TokenStats.get_stats(word_tokenizer)
-    # at_stats = TokenStats.get_stats(auto_tokenizer)
-
-    # print(word_stats)
-    # print(at_stats)
-
-    # one subplot per tokenizer instance, each with total/unique bar pairs
-    # for characters, words and tokens
     bar_visualizer = TokenBarVisualizer(
         PlotSettings(),
         {

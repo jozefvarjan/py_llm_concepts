@@ -197,8 +197,8 @@ class TokenBarVisualizer(DataVisualizer):
 
             base = palette(idx % 10)
             cls = type(tokenizer).__name__
-            # e.g. "CharacterTokenizer (char_tokenizer)" when a name is given
-            name = f'{cls} ({inst_name})' if inst_name else cls
+            # e.g. "char_tokenizer (CharacterTokenizer)" when a name is given
+            name = f'{inst_name} ({cls})' if inst_name else cls
 
             # slot positions inside each group: total then unique per tokenizer
             total_slot = 2 * idx

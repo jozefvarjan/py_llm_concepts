@@ -83,9 +83,14 @@ class WordTokenizer(Tokenizer):
         self.input_text = input_text
         self.vocab_map = {w: i for i, w in enumerate(sorted(set(self.input_text.split(" "))))}
 
-    def encode():
-        raise NotImplementedError("WordTokenizer.encode() not implemented yet.")
+    def _encode(self, word):
+        if word not in self.vocab_map:
+            raise KeyError(f"word {word} is not in vocab map!")
+        return self.vocab_map[word]
 
+    def encode(self):
+        return [self._encode(w) for w in self.input_text.split(" ")]
+        
     def decode():
         raise NotImplementedError("WordTokenizer.decode() not implemented yet.")
 
